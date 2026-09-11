@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Frontlinjen — Battlefront II fansamfunn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D1A2F; --bg-hover:#142641; --bg-active:#1B3150;
+    --surface:#17364F; --surface-hover:#234863; --surface-active:#2F5A76;
+    --primary:#09D8C7; --primary-hover:#35E3D5; --primary-active:#69EDE2;
+    --secondary:#411E3A; --secondary-hover:#56304E; --secondary-active:#6B4262;
+    --accent:#BD0927; --accent-hover:#D52B45; --accent-active:#E55468;
+    --accent-dark:#500A1F; --accent-dark-hover:#681B31; --accent-dark-active:#7F2D43;
+    --text:#F5F7FA; --text-muted:#AAB7C5;
+    --line:#22314A;
+  }
+  [data-faction="empire"]{ --fac:var(--accent); --fac-hover:var(--accent-hover); --fac-soft:var(--accent-dark); }
+  [data-faction="rebel"]{ --fac:var(--primary); --fac-hover:var(--primary-hover); --fac-soft:var(--secondary); }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{ background:var(--bg); }
+  body{
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    max-width:560px; margin:0 auto;
+    position:relative;
+  }
+  h1,h2,h3,.disp{ font-family:'Big Shoulders Display', sans-serif; font-weight:800; letter-spacing:.01em; line-height:1.05; }
+  a{color:inherit; text-decoration:none;}
+  button{font-family:inherit;}
+
+  /* ---- top bar ---- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; background:rgba(13,26,47,.92); backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .mark{ width:24px; height:24px; border:1.5px solid var(--fac); transform:rotate(45deg); display:flex; align-items:center; justify-content:center; }
+  .mark span{ width:6px; height:6px; background:var(--fac); transform:rotate(-45deg); display:block; }
+  .brand b{ font-family:'Big Shoulders Display'; font-size:17px; letter-spacing:.02em; }
+  .burger{
+    width:38px; height:38px; border:1px solid var(--line); background:var(--surface);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .burger svg{ width:18px; height:18px; stroke:var(--text); fill:none; stroke-width:1.8; }
+
+  /* ---- drawer ---- */
+  .scrim{
+    position:fixed; inset:0; background:rgba(4,9,18,.6); z-index:29;
+    opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+  .drawer{
+    position:fixed; top:0; right:0; height:100%; width:78%; max-width:320px;
+    background:var(--surface); border-left:1px solid var(--line); z-index:30;
+    transform:translateX(100%); transition:transform .2s ease;
+    padding:20px 18px; padding-top:calc(20px + env(safe-area-inset-top));
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .drawer.open{ transform:translateX(0); }
+  .drawer-close{ align-self:flex-end; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); margin-bottom:10px; }
+  .drawer-close svg{ width:16px; height:16px; stroke:var(--text); fill:none; stroke-width:1.8; }
+  .drawer-label{ font-size:11px; color:var(--text-muted); margin:14px 0 6px; }
+  .drawer-btn{
+    display:flex; align-items:center; gap:10px; padding:13px 12px; background:var(--bg);
+    border:1px solid var(--line); color:var(--text); font-size:14px; text-align:left;
+  }
+  .drawer-btn.solid{ background:var(--fac); border-color:var(--fac); color:var(--bg); font-weight:500; }
+  .drawer-btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.7; flex-shrink:0; }
+  .drawer-fac{
+    display:flex; align-items:center; justify-content:space-between; padding:13px 12px;
+    background:var(--bg); border:1px solid var(--line); font-size:14px;
+  }
+  .fac-switch{ width:44px; height:24px; border:1px solid var(--fac); position:relative; flex-shrink:0; cursor:pointer; }
+  .fac-switch::after{
+    content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:var(--fac);
+    transition:left .18s ease;
+  }
+  [data-faction="empire"] .fac-switch::after{ left:22px; }
+
+  /* ---- content ---- */
+  .content{ padding-bottom:96px; }
+  .page{ display:none; }
+  .page.active{ display:block; }
+  .wrap{ padding:22px 18px 12px; }
+
+  .eyebrow-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; color:var(--text-muted); font-size:12px; }
+  .eyebrow-row .dot{ width:5px; height:5px; background:var(--fac); border-radius:50%; }
+
+  /* ---- hero ---- */
+  .hero{ border:1px solid var(--line); background:var(--surface); overflow:hidden; margin-bottom:36px; }
+  .hero-art{
+    height:180px; position:relative; overflow:hidden;
+    background:radial-gradient(ellipse 140% 100% at 30% 0%, rgba(9,216,199,.14), transparent 60%), linear-gradient(180deg,#0F2038,#0A1526);
+    border-bottom:1px solid var(--line);
+  }
+  .hero-art::before{
+    content:''; position:absolute; inset:0;
+    background:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.6), transparent),
+      radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1.5px 1.5px at 55% 60%, rgba(255,255,255,.6), transparent),
+      radial-gradient(1px 1px at 90% 45%, rgba(255,255,255,.4), transparent),
+      radial-gradient(1px 1px at 35% 80%, rgba(255,255,255,.4), transparent);
+  }
+  .hero-planet{ position:absolute; right:-70px; bottom:-110px; width:220px; height:220px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #1C3550, #081120 70%); }
+  .hero-ship{ position:absolute; opacity:.85; top:34px; left:24px; width:130px; }
+  .hero-body{ padding:22px 20px 26px; }
+  .hero-tag{ color:var(--fac); font-size:12px; margin-bottom:8px; }
+  .hero h1{ font-size:32px; margin-bottom:10px; }
+  .hero p{ color:var(--text-muted); font-size:13.5px; line-height:1.55; margin-bottom:20px; }
+  .btnrow{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    padding:11px 18px; border:1px solid var(--fac); color:var(--fac);
+    font-size:13px; background:none; letter-spacing:.01em;
+  }
+  .btn.solid{ background:var(--fac); color:var(--bg); font-weight:500; border-color:var(--fac); }
+  .btn.quiet{ border-color:var(--line); color:var(--text-muted); }
+
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; }
+  .section-head h2{ font-size:21px; }
+  .section-head .link{ font-size:12.5px; color:var(--fac); }
+
+  .stat-strip{ display:grid; grid-template-columns:repeat(2,1fr); border:1px solid var(--line); margin-bottom:8px; }
+  .stat-strip div{ padding:14px 16px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .stat-strip div:nth-child(2n){ border-right:none; }
+  .stat-strip div:nth-last-child(-n+2){ border-bottom:none; }
+  .stat-strip .k{ font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+  .stat-strip .v{ font-size:15px; }
+
+  .news-list{ display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); margin-bottom:44px; }
+  .news-card{ background:var(--surface); padding:16px 18px; }
+  .news-card .date{ font-size:11px; color:var(--text-muted); margin-bottom:6px; }
+  .news-card h3{ font-size:16px; font-weight:700; margin-bottom:6px; }
+  .news-card p{ font-size:13px; color:var(--text-muted); line-height:1.5; }
+
+  /* ---- about ---- */
+  .about-lead{ font-size:14.5px; color:var(--text-muted); line-height:1.6; margin-bottom:30px; }
+  .faction-grid{ display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); margin-bottom:40px; }
+  .faction-card{ background:var(--surface); padding:18px; }
+  .faction-card .side{ font-size:11px; color:var(--text-muted); margin-bottom:5px; }
+  .faction-card h3{ font-size:18px; margin-bottom:6px; }
+  .faction-card p{ font-size:13px; color:var(--text-muted); line-height:1.5; }
+  .mode-list{ border-top:1px solid var(--line); }
+  .mode-row{ padding:14px 2px; border-bottom:1px solid var(--line); }
+  .mode-row .name{ font-size:14px; margin-bottom:3px; }
+  .mode-row .desc{ font-size:12.5px; color:var(--text-muted); line-height:1.45; }
+
+  /* ---- forum ---- */
+  .forum-note{ color:var(--text-muted); font-size:12.5px; margin-bottom:24px; }
+  .cat-list{ border-top:1px solid var(--line); margin-bottom:40px; }
+  .cat-row{ display:flex; align-items:center; gap:12px; padding:14px 2px; border-bottom:1px solid var(--line); }
+  .cat-icon{ width:32px; height:32px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--fac); }
+  .cat-icon svg{ width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.6; }
+  .cat-main{ flex:1; min-width:0; }
+  .cat-main .name{ font-size:14px; margin-bottom:2px; }
+  .cat-main .desc{ font-size:11.5px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cat-n{ text-align:right; flex-shrink:0; }
+  .cat-n .n{ font-size:13px; color:var(--text-muted); }
+  .cat-n .l{ font-size:10px; color:var(--text-muted); opacity:.7; }
+
+  .thread-list{ border-top:1px solid var(--line); }
+  .thread-row{ display:flex; align-items:center; gap:10px; padding:12px 2px; border-bottom:1px solid var(--line); font-size:13px; }
+  .thread-row .badge{ font-size:9.5px; padding:3px 6px; border:1px solid var(--accent); color:var(--accent-active); flex-shrink:0; }
+  .thread-row .t{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .thread-row .by{ color:var(--text-muted); flex-shrink:0; font-size:11.5px; }
+
+  /* ---- gallery ---- */
+  .gal-note{ color:var(--text-muted); font-size:12.5px; margin-bottom:20px; }
+  .gal-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .gal-card{ border:1px solid var(--line); background:var(--surface); }
+  .gal-img{ height:110px; }
+  .gal-meta{ padding:10px 11px; }
+  .gal-meta .cap{ font-size:12px; margin-bottom:5px; line-height:1.3; }
+  .gal-meta .row{ display:flex; justify-content:space-between; font-size:10.5px; color:var(--text-muted); }
+  .gal-meta .row .like{ display:flex; align-items:center; gap:4px; }
+  .gal-meta .row .like svg{ width:10px; height:10px; stroke:currentColor; fill:none; stroke-width:1.8; }
+
+  /* ---- profile ---- */
+  .profile-head{ display:flex; gap:16px; align-items:center; padding-bottom:22px; border-bottom:1px solid var(--line); margin-bottom:22px; flex-wrap:wrap; }
+  .avatar{ width:64px; height:64px; border:1px solid var(--fac); flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--surface); }
+  .avatar span{ font-family:'Big Shoulders Display'; font-size:22px; color:var(--fac); }
+  .profile-name h1{ font-size:24px; margin-bottom:4px; }
+  .profile-name .sub{ font-size:12px; color:var(--text-muted); }
+  .fac-badge{ display:inline-block; margin-top:8px; font-size:10.5px; padding:3px 9px; border:1px solid var(--fac); color:var(--fac); }
+  .discord-chip{
+    display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid var(--line);
+    background:var(--surface); font-size:12px; color:var(--text-muted); width:100%;
+  }
+  .discord-chip svg{ width:15px; height:15px; stroke:var(--fac); fill:none; stroke-width:1.6; flex-shrink:0; }
+
+  .profile-stats{ display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--line); margin-bottom:32px; }
+  .profile-stats div{ padding:14px 8px; border-right:1px solid var(--line); text-align:center; }
+  .profile-stats div:last-child{ border-right:none; }
+  .profile-stats .v{ font-family:'Big Shoulders Display'; font-size:22px; }
+  .profile-stats .k{ font-size:10px; color:var(--text-muted); margin-top:2px; }
+
+  .feed-row{ display:flex; gap:12px; padding:13px 2px; border-bottom:1px solid var(--line); align-items:flex-start; }
+  .feed-icon{ width:24px; height:24px; border:1px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--text-muted); margin-top:2px; }
+  .feed-icon svg{ width:11px; height:11px; stroke:currentColor; fill:none; stroke-width:1.6; }
+  .feed-body{ flex:1; min-width:0; }
+  .feed-body .t{ font-size:12.5px; margin-bottom:2px; }
+  .feed-body .d{ font-size:10.5px; color:var(--text-muted); }
+
+  /* ---- bottom nav ---- */
+  .bottomnav{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:560px; z-index:25;
+    background:rgba(23,54,79,.96); backdrop-filter:blur(8px);
+    border-top:1px solid var(--line);
+    display:flex; padding-bottom:env(safe-area-inset-bottom);
+  }
+  .navitem{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    padding:10px 4px 8px; background:none; color:var(--text-muted); font-size:10px;
+    border-top:2px solid transparent;
+  }
+  .navitem svg{ width:19px; height:19px; stroke:currentColor; fill:none; stroke-width:1.7; }
+  .navitem.active{ color:var(--fac); border-top-color:var(--fac); }
+</style>
+</head>
+<body data-faction="rebel">
+
+  <div class="topbar">
+    <div class="brand"><div class="mark"><span></span></div><b>Frontlinjen</b></div>
+    <button class="burger" id="burgerBtn"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="drawer" id="drawer">
+    <button class="drawer-close" id="drawerClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+
+    <div class="drawer-label">Konto</div>
+    <button class="drawer-btn solid">Logg inn</button>
+    <button class="drawer-btn">Registrer deg</button>
+    <button class="drawer-btn">
+      <svg viewBox="0 0 24 24"><path d="M8 12a2 2 0 104 0 2 2 0 00-4 0zM16 12a2 2 0 104 0 2 2 0 00-4 0z"/><path d="M6 8c1-1 3-2 6-2s5 1 6 2M4 16c1.5 2 4.5 3.5 8 3.5s6.5-1.5 8-3.5"/></svg>
+      Logg inn med Discord
+    </button>
+
+    <div class="drawer-label">Fraksjon</div>
+    <div class="drawer-fac">
+      <span id="facLabel">Opprørsalliansen</span>
+      <div class="fac-switch" id="facSwitch"></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <section class="page active" id="page-home">
+      <div class="wrap">
+        <div class="hero">
+          <div class="hero-art">
+            <div class="hero-planet"></div>
+            <svg class="hero-ship" viewBox="0 0 200 90" fill="none" stroke="#4C6B87" stroke-width="1">
+              <path d="M10 45 L70 30 L140 35 L190 45 L140 55 L70 60 Z"/>
+              <path d="M70 30 L70 60 M140 35 L140 55"/>
+              <rect x="85" y="38" width="30" height="14"/>
+            </svg>
+          </div>
+          <div class="hero-body">
+            <div class="hero-tag">FRONTLINJEN &mdash; drevet av spillere, for spillere</div>
+            <h1>Basen din for<br>Battlefront II</h1>
+            <p>Diskuter strategier, del skjermbilder, og finn folk å spille med. Ingen offisiell tilknytning til EA eller DICE.</p>
+            <div class="btnrow">
+              <button class="btn solid" onclick="showPage('forum')">Bli med i forumet</button>
+              <button class="btn quiet" onclick="showPage('gallery')">Se galleriet</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-strip">
+          <div><div class="k">Medlemmer</div><div class="v">4 128</div></div>
+          <div><div class="k">Forumtråder</div><div class="v">2 940</div></div>
+          <div><div class="k">Opplastede bilder</div><div class="v">1 306</div></div>
+          <div><div class="k">Aktive nå</div><div class="v">67</div></div>
+        </div>
+
+        <div style="height:40px"></div>
+
+        <div class="section-head"><h2>Nyheter</h2><span class="link">Alle</span></div>
+        <div class="news-list">
+          <div class="news-card"><div class="date">8. sept 2026</div><h3>Community-turnering: Galactic Assault</h3><p>Påmelding er åpen for høstens 16-lags turnering. Kamper starter 3. oktober.</p></div>
+          <div class="news-card"><div class="date">2. sept 2026</div><h3>Ny gjennomgang: beste Heroes-team</h3><p>Et medlem har satt sammen en oppdatert guide for Helter mot Skurker.</p></div>
+          <div class="news-card"><div class="date">27. aug 2026</div><h3>Ukens galleri-favoritter</h3><p>Fem skjermbilder fra fellesskapet som fikk flest stemmer denne uken.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-about">
+      <div class="wrap">
+        <div class="eyebrow-row"><span class="dot"></span>Om spillet</div>
+        <h2 style="font-size:28px; margin-bottom:14px;">Star Wars Battlefront II</h2>
+        <p class="about-lead">Battlefront II er et lagbasert skytespill fra DICE, utgitt i 2017, satt til alle tre æraer i Star Wars-universet. Spillere kjemper som infanteri, i kjøretøy eller som kjente helter og skurker.</p>
+
+        <div class="stat-strip">
+          <div><div class="k">Utgitt</div><div class="v">2017</div></div>
+          <div><div class="k">Utvikler</div><div class="v">DICE</div></div>
+          <div><div class="k">Utgiver</div><div class="v">Electronic Arts</div></div>
+          <div><div class="k">Plattformer</div><div class="v">PC, PS4, Xbox One</div></div>
+        </div>
+
+        <div style="height:40px"></div>
+
+        <div class="section-head"><h2>Fraksjonene</h2></div>
+        <div class="faction-grid">
+          <div class="faction-card"><div class="side">Klonekrigene</div><h3>Republikken</h3><p>Klonetroppere og jedier som forsvarer galaksen.</p></div>
+          <div class="faction-card"><div class="side">Klonekrigene</div><h3>Separatistene</h3><p>Droidehærer under Den konfødererte alliansen.</p></div>
+          <div class="faction-card"><div class="side">Borgerkrigen</div><h3>Opprørsalliansen</h3><p>Motstandsbevegelsen som kjemper mot Imperiet.</p></div>
+          <div class="faction-card"><div class="side">Borgerkrigen</div><h3>Imperiet</h3><p>Den galaktiske ordenens jerngrep.</p></div>
+        </div>
+
+        <div class="section-head"><h2>Spillmoduser</h2></div>
+        <div class="mode-list">
+          <div class="mode-row"><div class="name">Galactic Assault</div><div class="desc">Store 40-spillers slag over flere faser.</div></div>
+          <div class="mode-row"><div class="name">Helter mot Skurker</div><div class="desc">4 mot 4 med ikoniske karakterer.</div></div>
+          <div class="mode-row"><div class="name">Starfighter Assault</div><div class="desc">Romkamper mellom stjernejagere og kapitalskip.</div></div>
+          <div class="mode-row"><div class="name">Instant Action</div><div class="desc">Solo eller samarbeid mot AI, uten nett.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-forum">
+      <div class="wrap">
+        <div class="eyebrow-row"><span class="dot"></span>Fellesskap</div>
+        <h2 style="font-size:26px; margin-bottom:10px;">Forum</h2>
+        <p class="forum-note">Opprett en vanlig konto, eller koble deg til med Discord &mdash; se menyen øverst.</p>
+
+        <div class="cat-list">
+          <div class="cat-row"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H7l-3 3z"/></svg></div><div class="cat-main"><div class="name">Generell diskusjon</div><div class="desc">Spillet, patcher og fellesskapet</div></div><div class="cat-n"><div class="n">812</div><div class="l">tråder</div></div></div>
+          <div class="cat-row"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></div><div class="cat-main"><div class="name">Strategier og tips</div><div class="desc">Klassebygging, kart og taktikk</div></div><div class="cat-n"><div class="n">434</div><div class="l">tråder</div></div></div>
+          <div class="cat-row"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div><div class="cat-main"><div class="name">Feil og tilbakemelding</div><div class="desc">Rapporter bugs, foreslå endringer</div></div><div class="cat-n"><div class="n">156</div><div class="l">tråder</div></div></div>
+          <div class="cat-row"><div class="cat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 15l5-5 4 4 4-4 5 5"/><circle cx="8" cy="9" r="1.3"/></svg></div><div class="cat-main"><div class="name">Fan content</div><div class="desc">Kunst, videoer og kreative bidrag</div></div><div class="cat-n"><div class="n">298</div><div class="l">tråder</div></div></div>
+          <div class="cat-row"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 4H7v5a5 5 0 0010 0V4zM7 6H4a3 3 0 003 3M17 6h3a3 3 0 01-3 3"/></svg></div><div class="cat-main"><div class="name">Turneringer</div><div class="desc">Organisering, lag og resultater</div></div><div class="cat-n"><div class="n">72</div><div class="l">tråder</div></div></div>
+        </div>
+
+        <div class="section-head"><h2 style="font-size:18px;">Nye tråder</h2></div>
+        <div class="thread-list">
+          <div class="thread-row"><span class="badge">Ny</span><span class="t">Beste loadout for Wookiee Warrior?</span><span class="by">Chewie_Fan</span></div>
+          <div class="thread-row"><span class="badge">Ny</span><span class="t">Trenger to spillere til fredagens turnering</span><span class="by">Vex_Arda</span></div>
+          <div class="thread-row"><span class="badge">Ny</span><span class="t">Forslag: egen kategori for kartguider</span><span class="by">tholut</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-gallery">
+      <div class="wrap">
+        <div class="eyebrow-row"><span class="dot"></span>Fellesskap</div>
+        <h2 style="font-size:26px; margin-bottom:8px;">Galleri</h2>
+        <p class="gal-note">Bilder fra brukere &mdash; du kan like og kommentere, akkurat som i forumet.</p>
+        <button class="btn solid" style="margin-bottom:20px; width:100%;">Last opp bilde</button>
+        <div class="gal-grid" id="galGrid"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-profile">
+      <div class="wrap">
+        <div class="profile-head">
+          <div class="avatar"><span>TH</span></div>
+          <div class="profile-name">
+            <h1>tholut</h1>
+            <div class="sub">Medlem siden mars 2024</div>
+            <div class="fac-badge" id="profileFacBadge">Opprørsalliansen</div>
+          </div>
+          <div class="discord-chip">
+            <svg viewBox="0 0 24 24"><path d="M8 12a2 2 0 104 0 2 2 0 00-4 0zM16 12a2 2 0 104 0 2 2 0 00-4 0z"/><path d="M6 8c1-1 3-2 6-2s5 1 6 2M4 16c1.5 2 4.5 3.5 8 3.5s6.5-1.5 8-3.5"/></svg>
+            Koblet til Discord &mdash; @tholut
+          </div>
+        </div>
+
+        <div class="profile-stats">
+          <div><div class="v">142</div><div class="k">Innlegg</div></div>
+          <div><div class="v">18</div><div class="k">Bilder</div></div>
+          <div><div class="v">3</div><div class="k">Turneringer</div></div>
+        </div>
+
+        <div class="section-head"><h2 style="font-size:18px;">Aktivitet</h2></div>
+        <div class="feed-list">
+          <div class="feed-row"><div class="feed-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H7l-3 3z"/></svg></div><div class="feed-body"><div class="t">Svarte i &laquo;Forslag: egen kategori for kartguider&raquo;</div><div class="d">2 timer siden</div></div></div>
+          <div class="feed-row"><div class="feed-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 15l5-5 4 4 4-4 5 5"/><circle cx="8" cy="9" r="1.3"/></svg></div><div class="feed-body"><div class="t">Lastet opp et nytt bilde til galleriet</div><div class="d">1 dag siden</div></div></div>
+          <div class="feed-row"><div class="feed-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H7l-3 3z"/></svg></div><div class="feed-body"><div class="t">Startet tråden om innloggingssiden</div><div class="d">3 dager siden</div></div></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <nav class="bottomnav">
+    <button class="navitem active" data-page="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hjem</button>
+    <button class="navitem" data-page="about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/></svg>Om</button>
+    <button class="navitem" data-page="forum"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H7l-3 3z"/></svg>Forum</button>
+    <button class="navitem" data-page="gallery"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 15l5-5 4 4 4-4 5 5"/><circle cx="8" cy="9" r="1.3"/></svg>Galleri</button>
+    <button class="navitem" data-page="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.6-4 5-5.5 7.5-5.5s5.9 1.5 7.5 5.5"/></svg>Min side</button>
+  </nav>
+
+<script>
+  function showPage(id){
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.navitem').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.querySelector('.navitem[data-page="' + id + '"]').classList.add('active');
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('.navitem').forEach(btn=>{
+    btn.addEventListener('click', ()=> showPage(btn.dataset.page));
+  });
+
+  const scrim = document.getElementById('scrim');
+  const drawer = document.getElementById('drawer');
+  function openDrawer(){ scrim.classList.add('open'); drawer.classList.add('open'); }
+  function closeDrawer(){ scrim.classList.remove('open'); drawer.classList.remove('open'); }
+  document.getElementById('burgerBtn').addEventListener('click', openDrawer);
+  document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+  scrim.addEventListener('click', closeDrawer);
+
+  document.getElementById('facSwitch').addEventListener('click', ()=>{
+    const body = document.body;
+    body.dataset.faction = body.dataset.faction === 'rebel' ? 'empire' : 'rebel';
+    const isRebel = body.dataset.faction === 'rebel';
+    document.getElementById('facLabel').textContent = isRebel ? 'Opprørsalliansen' : 'Imperiet';
+    document.getElementById('profileFacBadge').textContent = isRebel ? 'Opprørsalliansen' : 'Imperiet';
+  });
+
+  const galItems = [
+    ['Solnedgang over Jakku', 'DustRunner_7', 41],
+    ['Klar for oppdrag', 'ArcTrooper99', 27],
+    ['Duell på broen, Mustafar', 'DarkSideDrew', 63],
+    ['Squad-bilde etter seier', 'RhoSquad', 19],
+    ['TIE-formasjon over Scarif', 'ImperialAce', 34],
+    ['Wookiee-forsvar, Kashyyyk', 'Chewie_Fan', 22],
+  ];
+  const grid = document.getElementById('galGrid');
+  const hues = [[195,35,16],[335,25,14],[190,30,18],[340,20,15],[200,25,17]];
+  galItems.forEach((item, i)=>{
+    const [h,s,l] = hues[i % hues.length];
+    const card = document.createElement('div');
+    card.className = 'gal-card';
+    card.innerHTML = `
+      <div class="gal-img" style="background:linear-gradient(160deg, hsl(${h} ${s}% ${l+8}%), hsl(${h+8} ${s}% ${l}%));"></div>
+      <div class="gal-meta">
+        <div class="cap">${item[0]}</div>
+        <div class="row"><span>${item[1]}</span><span class="like"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4.5 6 4.5c2 0 3.5 1 4 2.5.5-1.5 2-2.5 4-2.5 3.5 0 5 3.5 3.5 7.5-2.5 4.5-9.5 9-9.5 9z"/></svg>${item[2]}</span></div>
+      </div>`;
+    grid.appendChild(card);
+  });
+</script>
+</body>
+</html>
